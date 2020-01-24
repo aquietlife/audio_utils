@@ -46,9 +46,8 @@ def fadeInFadeOutRamp(amplitude, duration, fs):
 	"""
 	This is super hacky :(
 	"""
-	fadeIn = np.linspace(0.0, amplitude, duration * fs / 2.0)
-	fadeOut = np.linspace(amplitude, 0.0, duration * fs / 2.0)
-	print("fade in size: {}, fade out size: {}, fade in and out side: {}".format(fadeIn.size, fadeOut.size, np.concatenate((fadeIn, fadeOut)).size))
+	fadeIn = np.linspace(0, amplitude, int(duration) * fs // 2)
+	fadeOut = np.linspace(amplitude, 0, int(duration) * fs // 2)
 	return np.concatenate((fadeIn, fadeOut))
 
 p = pyaudio.PyAudio()
@@ -60,10 +59,18 @@ sine_freq = 367.0
 chirp_start_freq = 440.0
 chirp_end_freq = 880.0
 
-chirp = genChirp(amplitude, fs, duration, chirp_start_freq, duration, chirp_end_freq) .astype(np.float32)
+chirp = genChirp(amplitude, fs, duration, chirp_start_freq, duration, chirp_end_freq).astype(np.float32)
 fade_ramp = fadeInFadeOutRamp(amplitude, duration, fs)
 
-fadeInFadeOutChirp = (chirp * fade_ramp).astype(np.float32).tobytes()
+fadeInFadeOutChirp1 = (chirp * fade_ramp).astype(np.float32)#.tobytes()
+fadeInFadeOutChirp2 = (chirp * fade_ramp).astype(np.float32)#.tobytes()
+
+final_chirp = np.arange(0, 20, 1/fs)
+
+final_chirp[0:10*fs] = fadeInFadeOutChirp1
+added_section = np.add(final_chirp[5*fs:15*fs], fadeInFadeOutChirp2)
+final_chirp[5*fs:15*fs] = added_section
+final_chirp = final_chirp.astype(np.float32).tobytes()
 
 # sine_wav = genSine(amplitude, sine_freq, 0, fs, duration).astype(np.float32).tobytes()  # need this to be floats or you're going to get a nice high amplitude square wave to your brain :)
 
@@ -74,7 +81,7 @@ stream = p.open(
 	output=True
 	)
 
-stream.write(fadeInFadeOutChirp)
+stream.write(final_chirp)
 
 stream.stop_stream()
 stream.close()
